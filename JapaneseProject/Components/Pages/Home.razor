@@ -1,0 +1,46 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Authorization
+@using BusinessLayer.Repositories
+@using BusinessLayer.Models
+@inject NavigationManager NavigationManager
+@using JapaneseProject.Components.Account
+@inject IdentityUserAccessor UserAccessor
+@inject IHttpContextAccessor HttpContextAccessor
+@inject AppRepository AppRepository
+
+@attribute [Authorize]
+
+<AuthorizeView>
+    Hello @context.User.Identity?.Name!
+</AuthorizeView>
+
+@if (vsCards == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="set-cards">
+        @foreach (var card in vsCards)
+        {
+            <VSCard Name="@(card.Name)" Guessed="@(card.GuessedWords)" Total="@(card.TotalWords)" VSId="@(card.Id)" />
+        }
+    </div>
+}
+
+@code {
+    private List<VocabularySetCard>? vsCards;
+
+    private string UserName;
+    private string UserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate loading for 1 second
+        await Task.Delay(1000);
+
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+        UserId = user.Id;
+        vsCards = await AppRepository.GetAllVocabularySetInfoAsync(user.Id);
+    }
+}

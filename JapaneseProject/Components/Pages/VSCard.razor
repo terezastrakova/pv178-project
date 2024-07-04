@@ -1,0 +1,38 @@
+﻿@using BusinessLayer.Repositories
+
+@* needed to avoid concurrency issues *@
+@inject IServiceProvider ServiceProvider
+
+@rendermode InteractiveServer
+
+<div class="vscard">
+    <div>@Name</div>
+    <span>Progress: @Guessed / @Total</span>
+    <a href="/Test/@(VSId.ToString())"><button>Test !</button></a>
+    @if (isUserMade)
+    {
+        <a href="/ManageSet/@(VSId.ToString())"><button>Edit</button></a>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Name { get; set; }
+    [Parameter]
+    public int Guessed { get; set; }
+    [Parameter]
+    public int Total { get; set; }
+    [Parameter]
+    public int VSId { get; set; }
+
+    private bool isUserMade = false;
+    protected override async Task OnInitializedAsync()
+    {
+        using (var scope = ServiceProvider.CreateScope())
+        {
+            var scopedRepository = scope.ServiceProvider.GetRequiredService<AppRepository>();
+            var result = await scopedRepository.IsPremadeSetAsync(VSId);
+            isUserMade = !result;
+        }
+    }
+}

@@ -1,0 +1,87 @@
+﻿@page "/Test/{VSId}"
+@using Microsoft.AspNetCore.Authorization
+@using BusinessLayer.Repositories
+@using BusinessLayer.Models
+@inject AppRepository AppRepository
+@inject StatisticsRepository UserVocabularySetRepository
+@inject IHttpContextAccessor HttpContextAccessor
+@rendermode InteractiveServer
+
+@using JapaneseProject.Components.Account
+@inject IdentityUserAccessor UserAccessor
+
+@attribute [Authorize]
+
+<h1>@testName</h1>
+
+@if (isTestComplete)
+{
+    <h3>Your Score: @CorrectToAllRatio[0] / @CorrectToAllRatio[1]</h3>
+}
+else
+{
+    <h3>Answered: @CorrectToAllRatio[1]</h3>
+    <h3>Correct: @CorrectToAllRatio[0]</h3>
+    <div class="test">
+        @if (words == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            @foreach (var word in words)
+            {
+                <TestCard Word="@(word[0])" Reading="@(word[1])" @bind-CorrectToAllRatio=CorrectToAllRatio />
+            }
+            @if (CorrectToAllRatio[1] == words.Count)
+            {
+                UpdateDb();
+            }
+        }
+    </div>
+}
+
+
+
+@code {
+    [Parameter]
+    public string VSId { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; }
+
+    [Parameter]
+    public int[] CorrectToAllRatio { get; set; } = [0, 0];
+
+    private List<string[]>? words;
+    private bool isTestComplete = false; 
+    private string testName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate loading for 1 second
+        await Task.Delay(1000);
+        testName = await AppRepository.GetVocabularySetNameAsync(int.Parse(VSId));
+        words = await AppRepository.GetVocabularyWordsAsync(Int32.Parse(VSId));
+    }
+
+    private async void UpdateDb()
+    {
+        Console.WriteLine("update");
+        int correct = CorrectToAllRatio[0];
+
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+
+        int progress = await UserVocabularySetRepository.GetProgressAsync(user.Id, int.Parse(VSId));
+
+        if (correct > progress)
+        {
+            Console.WriteLine($"here {correct}, {progress}");
+
+            await UserVocabularySetRepository.UpdateUserSetProgress(user.Id, int.Parse(VSId), correct);
+        }
+        isTestComplete = true;
+        StateHasChanged();
+    }
+
+}

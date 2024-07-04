@@ -1,0 +1,172 @@
+﻿@page "/ManageSet/{VSId}"
+@using Microsoft.AspNetCore.Authorization
+@using BusinessLayer.Repositories
+@using BusinessLayer.Models
+@inject SetManagementRepository SetManagementRepository
+@inject CategoryRepository CategoryRepository
+@inject StatisticsRepository StatisticsRepository
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
+
+@rendermode InteractiveServer
+
+@using JapaneseProject.Components.Account
+@inject IdentityUserAccessor UserAccessor
+
+@using Radzen.Blazor
+
+@attribute [Authorize]
+
+<div style="
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+">
+    <h3>ManageSet</h3>
+    <div>
+        @if (unsavedChanges)
+        {
+            <span>There are some unsaved changes !</span>
+            <button @onclick="SaveChanges">Save Changes</button>
+        }
+    </div>
+</div>
+
+@if (set == null)
+{
+    <p>Loading set...</p>
+}
+else
+{
+    <h4>@set.Name</h4>
+    <ul>
+        @foreach (var word in set.Words)
+        {
+            if (word.Change != BusinessLayer.Models.ChangeType.Deleted)
+            {
+                <li>
+                    <input @bind="word.EnglishWord" @bind:after="() => MarkAsModified(word)" />
+                    <input @bind="word.JapaneseWord" @bind:after="() => MarkAsModified(word)" />
+                    <button @onclick="() => MarkAsDeleted(word)">Delete</button>
+                    <RadzenDropDown @bind-Value=@word.Categories
+                    Data=@allCategories
+                    TextProperty="Name"
+                    Name="DropDownMultipleChips"
+                    Multiple=true
+                    AllowClear=true
+                    Placeholder="Select categories"
+                    Chips=true Style="width: 100%; max-width: 400px;"
+                    Change="() => MarkAsModified(word)" />
+                </li>
+            }
+        }
+        <li>
+            <input @bind="englishWord" placeholder="English Word" />
+            <input @bind="japaneseWord" placeholder="Japanese Word" />
+            <button @onclick="AddWord">Add Word</button>
+        </li>
+    </ul>
+}
+
+@code {
+    [Parameter]
+    public string VSId { get; set; }
+    private BusinessLayer.Models.Set set;
+    private List<BusinessLayer.Models.Category> allCategories;
+
+    private bool unsavedChanges = false;
+
+    private string englishWord { get; set; }
+    private string japaneseWord { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+        try
+        {
+            set = await SetManagementRepository.GetSetAsync(user.Id, int.Parse(VSId));
+        }
+        catch
+        {
+            NavigationManager.NavigateTo("/");
+        }
+        allCategories = await CategoryRepository.GetUserCategoriesAsync(user.Id);
+    }
+
+    private void AddWord()
+    {
+        if (!string.IsNullOrEmpty(englishWord) && !string.IsNullOrEmpty(japaneseWord))
+        {
+            set.Words.Add(new BusinessLayer.Models.Word 
+                {
+                    EnglishWord = englishWord,
+                    JapaneseWord = japaneseWord,
+                    Change = ChangeType.Added
+                });
+            englishWord = string.Empty;
+            japaneseWord = string.Empty;
+            unsavedChanges = true;
+        }
+        else
+        {
+            Console.WriteLine("Empty word fields"); // debugging line
+        }
+    }
+
+    private void MarkAsDeleted(BusinessLayer.Models.Word word)
+    {
+        if (word.Change == ChangeType.Added)
+        {   
+            set.Words.Remove(word);
+        }
+        else
+        {
+            word.Change = ChangeType.Deleted;
+        }
+        unsavedChanges = true;
+    }
+
+    private void MarkAsModified(BusinessLayer.Models.Word word)
+    {
+        if (word.Change != ChangeType.Added)
+        {
+            word.Change = ChangeType.Modified;
+        }
+        unsavedChanges = true;
+    }
+
+    private async Task SaveChanges()
+    {
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+
+        foreach (var word in set.Words)
+        {
+            switch (word.Change)
+            {
+                case ChangeType.Added:
+                    await SetManagementRepository.AddWordAsync(user.Id, set.Id, word);
+                    break;
+                case ChangeType.Deleted:
+                    await SetManagementRepository.DeleteWordAsync(set.Id, word.Id);
+                    break;
+                case ChangeType.Modified:
+                    await SetManagementRepository.UpdateWordAsync(user.Id, set.Id, word);
+                    break;
+            }
+        }
+        await StatisticsRepository.UpdateUserSetProgress(user.Id, int.Parse(VSId), 0);
+        set = await SetManagementRepository.GetSetAsync(user.Id, int.Parse(VSId));
+        unsavedChanges = false;
+
+    }
+
+    private void OnCategoryChange(BusinessLayer.Models.Word word)
+    {
+        // this is for debugging purposes
+        foreach (var c in word.Categories)
+        {
+            Console.WriteLine(c.Name);
+        }
+    }
+}

@@ -1,0 +1,54 @@
+﻿@rendermode InteractiveServer
+
+<div class="test-card @CardClass">
+    <p>@(Word)</p>
+    <input class="input-field" type="text" @bind="Answer" @bind:event="oninput" @onkeydown="@Enter" disabled="@IsDisabled" />
+</div>
+
+@code {
+    [Parameter]
+    public string Word { get; set; } = "";
+
+    [Parameter]
+    public string Reading { get; set; }
+    public string? Answer { get; set; }
+    private string CardClass = "default";
+
+    [Parameter]
+    public Action ParentMethod { get; set; }
+
+    [Parameter]
+    public int[] CorrectToAllRatio { get; set; }
+    [Parameter]
+    public EventCallback<int[]> CorrectToAllRatioChanged { get; set; }
+
+
+
+
+    async Task UpdateCurrentCounterValue()
+    {
+        await CorrectToAllRatioChanged.InvokeAsync(CorrectToAllRatio);
+    }
+
+
+    protected bool IsDisabled { get; set; }
+    public void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+
+            CorrectToAllRatio[1]++;
+            if (Answer == Reading)
+            {
+                CardClass = "correct";
+                CorrectToAllRatio[0]++;
+            }
+            else
+            {
+                CardClass = "incorrect";
+            }
+            IsDisabled = true;
+            UpdateCurrentCounterValue();
+        }
+    }
+}

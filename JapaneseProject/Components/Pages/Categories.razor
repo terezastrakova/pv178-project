@@ -1,0 +1,125 @@
+﻿@page "/Categories"
+@using JapaneseProject.Components.Account
+@using Microsoft.AspNetCore.Authorization
+@using BusinessLayer
+@using BusinessLayer.Repositories
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IdentityUserAccessor UserAccessor
+@inject CategoryRepository CategoryRepository
+@rendermode InteractiveServer
+
+@attribute [Authorize]
+
+<div style="
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+">
+    <h3>Categories</h3>
+    <div>
+        @if (unsavedChanges)
+        {
+            <span>There are some unsaved changes !</span>
+            <button @onclick="SaveChanges">Save Changes</button>
+        }
+    </div>
+</div>
+
+@if (categories == null)
+{
+    <p>Loading categories...</p>
+}
+else
+{
+    <ul>
+        @foreach (var category in categories)
+        {
+            if (category.Change != BusinessLayer.Models.ChangeType.Deleted)
+            {
+                <li>
+                    @if (category.IsPremade)
+                    {
+                        <input @bind="category.Name" disabled/>
+                    }
+                    else
+                    {
+                        <input @bind="category.Name" @bind:after="() => MarkAsModified(category)" />
+                        <button @onclick="() => MarkAsDeleted(category)">Delete</button>
+                    }
+                </li>
+            }
+        }
+    </ul>
+    <input @bind="newCategoryName" placeholder="New Category Name" />
+    <button @onclick="MarkAsAdded">Add Category</button>
+}
+
+@code {
+    private List<BusinessLayer.Models.Category> categories;
+    private string newCategoryName;
+    private bool unsavedChanges = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+        categories = await CategoryRepository.GetUserCategoriesAsync(user.Id);
+    }
+
+    private void MarkAsDeleted(BusinessLayer.Models.Category category)
+    {
+        if (category.Change == BusinessLayer.Models.ChangeType.Added)
+        {
+            categories.Remove(category);
+        }
+        else
+        {
+            category.Change = BusinessLayer.Models.ChangeType.Deleted;
+        }
+        unsavedChanges = true;
+    }
+
+    private void MarkAsModified(BusinessLayer.Models.Category category)
+    {
+        if (category.Change != BusinessLayer.Models.ChangeType.Added)
+        {
+            category.Change = BusinessLayer.Models.ChangeType.Modified;
+        }
+        unsavedChanges = true;
+    }
+
+    private void MarkAsAdded()
+    {
+        var newCategory = new BusinessLayer.Models.Category
+            {
+                Name = newCategoryName,
+                IsPremade = false,
+                Change = BusinessLayer.Models.ChangeType.Added
+            };
+        categories.Add(newCategory);
+        newCategoryName = string.Empty;
+        unsavedChanges = true;
+    }
+
+    private async Task SaveChanges()
+    {
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+        
+        foreach (var category in categories)
+        {
+            switch (category.Change)
+            {
+                case BusinessLayer.Models.ChangeType.Added:
+                    await CategoryRepository.AddCategoryAsync(user.Id, category.Name);
+                    break;
+                case BusinessLayer.Models.ChangeType.Deleted:
+                    await CategoryRepository.DeleteCategoryAsync(user.Id, category.Id);
+                    break;
+                case BusinessLayer.Models.ChangeType.Modified:
+                    await CategoryRepository.UpdateCategoryAsync(user.Id, category);
+                    break;
+            }
+        }
+        categories = await CategoryRepository.GetUserCategoriesAsync(user.Id);
+        unsavedChanges = false;
+    }
+}

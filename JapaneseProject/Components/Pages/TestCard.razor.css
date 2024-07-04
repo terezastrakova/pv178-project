@@ -1,0 +1,39 @@
+﻿body {
+}
+
+div.test-card {
+    border: .7vw solid;
+    color: #fff;
+    border-radius: 1rem;
+    width: 15vw;
+    min-width: 250px;
+    padding: 2vw;
+    margin: 1vw;
+    font-size: 3vw;
+    text-align: center;
+}
+
+.input-field {
+    height: 7vw;
+    margin-top: 20px;
+    font-size: 1rem;
+    outline: none;
+    width: 75%;
+    text-align: center;
+    text-transform: lowercase;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
+    border-radius: 4px;
+    border-color: #fff;
+    border-style: none;
+}
+
+
+div.default {
+    background-color:burlywood;
+}
+div.correct {
+    background-color:green;
+}
+div.incorrect {
+    background-color:brown;
+}

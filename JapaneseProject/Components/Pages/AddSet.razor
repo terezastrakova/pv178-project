@@ -1,0 +1,88 @@
+﻿@page "/AddSet"
+@using BusinessLayer.Repositories
+@inject SetManagementRepository SetManagementRepository
+@inject IHttpContextAccessor HttpContextAccessor
+@using JapaneseProject.Components.Account
+@using Microsoft.AspNetCore.Authorization
+@inject IdentityUserAccessor UserAccessor
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+@attribute [Authorize]
+
+<h3>Add Custom Vocabulary Set</h3>
+
+<div>
+    <label>Set Name:</label>
+    <input @bind="setName" />
+</div>
+<div>
+    <label>English Word:</label>
+    <input @bind="englishWord" />
+</div>
+<div>
+    <label>Japanese Word:</label>
+    <input @bind="japaneseWord" />
+</div>
+<button @onclick="AddWord">Add Word</button>
+<button @onclick="SubmitSet">Submit Set</button>
+
+<div>
+    <h4>Words</h4>
+    <ul>
+        @foreach (var word in words)
+        {
+            <li>
+                <input @bind="word[0]" placeholder="English Word" />
+                <input @bind="word[1]" placeholder="Japanese Word" />
+                <button @onclick="() => DeleteWord(word)">Delete</button>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    private string setName { get; set; }
+    private List<string[]> words = new List<string[]>();
+
+    private string englishWord { get; set; }
+    private string japaneseWord { get; set; }
+
+    private void AddWord()
+    {
+        Console.WriteLine($"Adding word: {englishWord} - {japaneseWord}"); // Debugging line
+        if (!string.IsNullOrEmpty(englishWord) && !string.IsNullOrEmpty(japaneseWord))
+        {
+            words.Add(new[] { englishWord, japaneseWord });
+            englishWord = string.Empty;
+            japaneseWord = string.Empty;
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine("Empty word fields"); // Debugging line
+        }
+    }
+
+    private void DeleteWord(string[] word)
+    {
+        words.Remove(word);
+        StateHasChanged();
+    }
+
+    private async Task SubmitSet()
+    {
+        if (!string.IsNullOrEmpty(setName) && words.Count > 0)
+        {
+            var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+            await SetManagementRepository.CreateCustomVocabularySetAsync(user.Id, setName, words);
+            setName = string.Empty;
+            words.Clear();
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            Console.WriteLine("Set of words is empty");
+        }
+    }
+}

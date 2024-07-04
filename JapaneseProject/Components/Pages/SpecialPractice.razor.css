@@ -1,0 +1,7 @@
+﻿body {
+}
+div.test {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}

@@ -1,0 +1,116 @@
+﻿@page "/SpecialPractice"
+@using Microsoft.AspNetCore.Authorization
+@using BusinessLayer.Repositories
+@using BusinessLayer.Models
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject SetRepository SetRepository
+@inject CategoryRepository CategoryRepository
+
+@rendermode InteractiveServer
+
+@using JapaneseProject.Components.Account
+@inject IdentityUserAccessor UserAccessor
+
+@using Radzen.Blazor
+
+@attribute [Authorize]
+
+<h3>SpecialPractice</h3>
+
+
+@if (isTestComplete)
+{
+    <h3>Your Score: @CorrectToAllRatio[0] / @CorrectToAllRatio[1]</h3>
+}
+else
+{
+    if (picking)
+    {
+        <h4>Select Sets</h4>
+        <RadzenDropDown @bind-Value=@selectedSets
+                        Data=@allSets
+                        TextProperty="Name"
+                        ValueProperty="Id"
+                        Multiple=true
+                        AllowClear=true
+                        Placeholder="Select sets"
+                        Chips=true Style="width: 100%; max-width: 400px;" />
+
+        <h4>Select Categories</h4>
+        <RadzenDropDown @bind-Value=@selectedCategories
+                        Data=@allCategories
+                        TextProperty="Name"
+                        ValueProperty="Id"
+                        Multiple=true
+                        AllowClear=true
+                        Placeholder="Select categories"
+                        Chips=true Style="width: 100%; max-width: 400px;" />
+
+        <button @onclick="SubmitSelection">Submit</button>
+    }
+    else
+    {
+        <h3>Answered: @CorrectToAllRatio[1]</h3>
+        <h3>Correct: @CorrectToAllRatio[0]</h3>
+        <div class="test">
+            @if (words == null)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else
+            {
+                @foreach (var word in words)
+                {
+                    <TestCard Word="@(word[0])" Reading="@(word[1])" @bind-CorrectToAllRatio=CorrectToAllRatio />
+                }
+                @if (CorrectToAllRatio[1] == words.Count)
+                {
+                    Finish();
+                }
+            }
+        </div>
+    }
+}
+
+
+@code {
+    private List<string[]>? words;
+    private bool isTestComplete = false;
+    private bool picking = true;
+
+    public int[] CorrectToAllRatio { get; set; } = [0, 0];
+
+    private List<BusinessLayer.Models.Set> allSets;
+    private List<BusinessLayer.Models.Category> allCategories;
+    private List<int> selectedSets = new List<int>();
+    private List<int> selectedCategories = new List<int>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+        allSets = await SetRepository.GetUserVocabularySetsAsync(user.Id);
+        allCategories = await CategoryRepository.GetUserCategoriesAsync(user.Id);
+    }
+
+    private async Task SubmitSelection()
+    {
+        if (selectedSets.Any() && selectedCategories.Any())
+        {
+            var user = await UserAccessor.GetRequiredUserAsync(HttpContextAccessor.HttpContext);
+            words = await SetRepository.GetWordsBySetsAndCategoriesAsync(user.Id, selectedSets, selectedCategories);
+            picking = false;
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine("Please select at least one set and one category."); // Debugging line
+        }
+    }
+    private void Finish()
+    {
+        Console.WriteLine("Test Finished");
+        isTestComplete = true;
+        StateHasChanged();
+    }
+}
