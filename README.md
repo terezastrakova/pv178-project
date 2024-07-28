@@ -40,8 +40,8 @@ Users can register and log in. Users can manage their own sets of words and cate
 
 1. **Clone the repository**
    ```sh
-   git clone https://github.com/yourusername/JapaneseProject.git
-   cd JapaneseProject
+   git clone https://github.com/terezastrakova/pv178-project.git
+   cd pv178-project
 
 2. Set up the database
    - Update the connection string in `Program.cs` if necessary.
@@ -51,7 +51,7 @@ Users can register and log in. Users can manage their own sets of words and cate
 
 3. **Run the application**
    ```sh
-   dotnet run --project JapaneseProject
+   dotnet run --project pv178-project
 
 4. **Open the application**
 Open your browser and navigate to `https://localhost:5001`.
