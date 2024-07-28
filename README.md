@@ -46,12 +46,15 @@ Users can register and log in. Users can manage their own sets of words and cate
 2. Set up the database
    - Update the connection string in `Program.cs` if necessary.
    - Apply migrations to set up the database schema.
+   
    ```sh
    dotnet ef database update --project DataAccessLayer
 
 3. **Run the application**
+
    ```sh
    dotnet run --project pv178-project
 
-4. **Open the application**
-Open your browser and navigate to `https://localhost:5001`.
+5. **Open the application**
+
+    Open your browser and navigate to `https://localhost:5001`.
